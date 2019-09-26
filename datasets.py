@@ -27,6 +27,7 @@ from tqdm import tqdm
 
 import pretrainedmodels.utils as utils
 import auxiliaries as aux
+import itertools
 
 
 """============================================================================"""
@@ -55,9 +56,17 @@ def give_dataloaders(dataset, opt):
 
     #Move datasets to dataloaders.
     dataloaders = {}
-    for key,dataset in datasets.items():
-        is_val = dataset.is_validation
-        dataloaders[key] = torch.utils.data.DataLoader(dataset, batch_size=opt.bs, num_workers=opt.kernels, shuffle=not is_val, pin_memory=True, drop_last=not is_val)
+    for key, dataset in datasets.items():
+        if isinstance(dataset, SuperLabelTrainDataset) and key == 'training':
+            # important: use a SequentialSampler
+            # see reasoning in class definition of SuperLabelTrainDataset
+            dataloaders[key] = torch.utils.data.DataLoader(dataset, batch_size=opt.bs, 
+                    num_workers=opt.kernels, sampler=torch.utils.data.SequentialSampler(dataset), 
+                    pin_memory=True, drop_last=False)
+        else:
+            is_val = dataset.is_validation
+            dataloaders[key] = torch.utils.data.DataLoader(dataset, batch_size=opt.bs, 
+                    num_workers=opt.kernels, shuffle=not is_val, pin_memory=True, drop_last=not is_val)
 
     return dataloaders
 
@@ -207,10 +216,23 @@ def give_OnlineProducts_datasets(opt):
     # super_train_dataset = BaseTripletDataset(super_train_image_dict, opt, is_validation=True)
     # super_train_dataset.conversion = super_conversion
 
+    if opt.loss == 'fastap':
+        super_dict = {}
+        for cid, scid, path in zip(training_files['class_id'], training_files['super_class_id'], training_files['path']):
+            cid  = cid - 1
+            scid = scid - 1
+            if not scid in super_dict.keys():
+                super_dict[scid] = {}
+            if not cid in super_dict[scid].keys():
+                super_dict[scid][cid] = []
+            super_dict[scid][cid].append(image_sourcepath+'/'+path)
 
-    train_dataset       = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
-    val_dataset         = BaseTripletDataset(val_image_dict,   opt, is_validation=True)
-    eval_dataset        = BaseTripletDataset(train_image_dict, opt, is_validation=True)
+        train_dataset = SuperLabelTrainDataset(super_dict, opt)
+    else:
+        train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
+
+    val_dataset   = BaseTripletDataset(val_image_dict,   opt, is_validation=True)
+    eval_dataset  = BaseTripletDataset(train_image_dict, opt, is_validation=True)
 
     train_dataset.conversion       = conversion
     val_dataset.conversion         = conversion
@@ -277,7 +299,12 @@ def give_InShop_datasets(opt):
     #     super_train_image_dict[key].append(opt.source_path+'/'+img_path)
     # super_train_dataset = BaseTripletDataset(super_train_image_dict, opt, is_validation=True)
 
-    train_dataset     = BaseTripletDataset(train_image_dict, opt,   samples_per_class=opt.samples_per_class)
+    if opt.loss == 'fastap':
+        # TODO
+        train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
+    else:
+        train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
+
     eval_dataset      = BaseTripletDataset(train_image_dict, opt,   is_validation=True)
     query_dataset     = BaseTripletDataset(query_image_dict, opt,   is_validation=True)
     gallery_dataset   = BaseTripletDataset(gallery_image_dict, opt, is_validation=True)
@@ -336,11 +363,16 @@ def give_VehicleID_datasets(opt):
             big_test_dict[key] = []
         big_test_dict[key].append(opt.source_path+'/image/{:07d}.jpg'.format(img_path))
 
-    train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
-    eval_dataset  = BaseTripletDataset(train_image_dict, opt,    is_validation=True)
-    val_small_dataset     = BaseTripletDataset(small_test_dict, opt,  is_validation=True)
+    if opt.loss == 'fastap':
+        # TODO
+        train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
+    else:
+        train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
+
+    eval_dataset          = BaseTripletDataset(train_image_dict, opt, is_validation=True)
+    val_small_dataset     = BaseTripletDataset(small_test_dict,  opt, is_validation=True)
     val_medium_dataset    = BaseTripletDataset(medium_test_dict, opt, is_validation=True)
-    val_big_dataset       = BaseTripletDataset(big_test_dict, opt,    is_validation=True)
+    val_big_dataset       = BaseTripletDataset(big_test_dict,    opt, is_validation=True)
 
     return {'training':train_dataset, 'testing_set1':val_small_dataset, 'testing_set2':val_medium_dataset, \
             'testing_set3':val_big_dataset, 'evaluation':eval_dataset}
@@ -440,10 +472,12 @@ class BaseTripletDataset(Dataset):
             if self.samples_per_class==1:
                 return self.image_list[idx][-1], self.transform(self.ensure_3dim(Image.open(self.image_list[idx][0])))
 
-            if self.n_samples_drawn==self.samples_per_class:
+            if (self.samples_per_class == 0 and self.n_samples_drawn == len(self.image_dict[self.current_class])
+                or self.n_samples_drawn == self.samples_per_class):
                 #Once enough samples per class have been drawn, we choose another class to draw samples from.
                 #Note that we ensure with self.classes_visited that no class is chosen if it had been chosen
                 #previously or one before that.
+                #NOTE: if self.samples_per_class is 0, then use all the images from current_class
                 counter = copy.deepcopy(self.avail_classes)
                 for prev_class in self.classes_visited:
                     if prev_class in counter: counter.remove(prev_class)
@@ -462,3 +496,138 @@ class BaseTripletDataset(Dataset):
 
     def __len__(self):
         return self.n_files
+
+
+
+######################### Custom Dataset used by FastAP #########################
+class SuperLabelTrainDataset(Dataset):
+    """
+    Dataset class to provide (augmented) correctly prepared training samples, utilizing
+    super-label information to construct the batches.
+
+    Each batch takes a pair of super-labels (s1,s2). Then, for each s{i}, sample half the batch
+    from classes belonging to it.
+
+    NOTE: 
+        SuperLabelTrainDataset implements a custom reshuffle(), so it's important that DataLoader 
+        does NOT do further randomization. This means it should use a SequentialSampler.
+    TODO:
+        support samples_per_class
+    """
+    def __init__(self, image_dict, opt):
+        """
+        Args:
+            image_dict: two-level dict, `super_dict[super_class_id][class_id]` gives the list of 
+                        image paths having the same super-label and class label
+        """
+        self.batch_size = opt.bs
+        self.batches_per_super_pair = opt.batches_per_super_pair
+        self.samples_per_class = opt.samples_per_class
+
+        # checks
+        assert self.batch_size % 2 == 0, "opt.bs should be an even number"
+        self.half_bs = self.batch_size // 2
+        #if self.samples_per_class > 0:
+        #    assert self.half_bs % self.samples_per_class == 0, "opt.bs not a multiple of opt.samples_per_class"
+
+        # provide avail_classes
+        self.avail_classes = []
+        for sid in image_dict.keys():
+            self.avail_classes += list(image_dict[sid].keys())
+
+        # Data augmentation/processing methods.
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
+        transf_list = []
+        transf_list.extend([transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
+                            transforms.RandomHorizontalFlip(0.5)])
+        transf_list.extend([transforms.ToTensor(), normalize])
+        self.transform = transforms.Compose(transf_list)
+
+        # for each super-label, store a list of lists:
+        # super_image_lists[super0]: [
+        #       [(class0, image0), (class0, image1), ...], 
+        #       [(class1, image0), (class1, image1), ...], 
+        #     ], 
+        # ...
+        self.super_image_lists = {}
+        for sid in image_dict.keys():
+            self.super_image_lists[sid] = []
+            for cid in image_dict[sid].keys():
+                cur_cid_list = list(itertools.product([cid], image_dict[sid][cid]))
+                self.super_image_lists[sid].append(cur_cid_list)
+
+        # reshuffle
+        self.super_pairs = list(itertools.combinations(range(len(image_dict)), 2))
+        self.reshuffle()
+
+    def ensure_3dim(self, img):
+        if len(img.size) == 2:
+            img = img.convert('RGB')
+        return img
+
+    def reshuffle(self):
+        # for each super-label, concat all images into a long list:
+        # super_image_concat[super0]: [
+        #       (class0_in_super0, image0), (class0_in_super0, image1), ...
+        #       (class1_in_super0, image0), (class1_in_super0, image1), ...
+        #       ...
+        #     ] 
+        # ...
+        super_image_concat, num_images, cur_pos = {}, {}, {}
+
+        for sid in self.super_image_lists.keys():
+            all_imgs_in_super = self.super_image_lists[sid]
+            random.shuffle(all_imgs_in_super)  # shffule classes
+            for imgs in all_imgs_in_super:
+                random.shuffle(imgs)  # shuffle images in each class
+
+            # concat a "list of lists" into a long list
+            super_image_concat[sid] = list(itertools.chain.from_iterable(all_imgs_in_super))
+            num_images[sid] = len(super_image_concat[sid])
+            cur_pos[sid] = 0
+
+        # pre-compute all the batches
+        # batches = [
+        #   [(cid,img), (cid,img), ...],   # batch No.0
+        #   [(cid,img), (cid,img), ...],   # batch No.1
+        #   ...
+        # ]
+        self.batches = []
+
+        # for each pair of super-labels, e.g. (bicycle, chair)
+        for pair in self.super_pairs:
+            s0, s1 = pair
+            # sample `batches_per_super_pair` batches
+            for b in range(self.batches_per_super_pair):
+                # get half of the batch from each super-label
+                cur_batch = []
+                for i in range(self.half_bs):
+                    ind0 = (cur_pos[s0]+i) % num_images[s0]
+                    ind1 = (cur_pos[s1]+i) % num_images[s1]
+                    cur_batch.append(super_image_concat[s0][ind0])
+                    cur_batch.append(super_image_concat[s1][ind1])
+
+                # move pointers and append to list
+                cur_pos[s0] = (cur_pos[s0] + self.half_bs) % num_images[s0]
+                cur_pos[s1] = (cur_pos[s1] + self.half_bs) % num_images[s1]
+                self.batches.append(cur_batch)
+
+
+    def __getitem__(self, idx):
+        # we use SequentialSampler together with SuperLabelTrainDataset,
+        # so idx==0 indicates the start of a new epoch
+        if idx == 0:
+            self.reshuffle()
+
+        batch_idx    = idx // self.batch_size  # global batch index
+        batch_offset = idx % self.batch_size   # offset from start of this batch
+        batch_item   = self.batches[batch_idx][batch_offset]
+
+        cls = batch_item[0]
+        img = Image.open(batch_item[1])
+        return cls, self.transform(self.ensure_3dim(img))
+
+
+    def __len__(self):
+        return len(self.batches) * self.batch_size
+

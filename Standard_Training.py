@@ -73,6 +73,9 @@ parser.add_argument('--beta_constant',                      action='store_true',
 parser.add_argument('--proxy_lr',     default=0.00001,     type=float, help='PROXYNCA: Learning Rate for Proxies in ProxyNCALoss.')
 ### NPair L2 Penalty
 parser.add_argument('--l2npair',      default=0.02,        type=float, help='NPAIR: Penalty-value for non-normalized N-PAIR embeddings.')
+### FastAP number of histogram bins
+parser.add_argument('--histbins',      default=10,        type=int, help='FASTAP: Number of histogram bins in distance quantization.')
+parser.add_argument('--batches_per_super_pair',  default=5,   type=int, help='FASTAP: Number sampled batches per pair of super-labels.')
 
 ##### Evaluation Settings
 parser.add_argument('--k_vals',       nargs='+', default=[1,2,4,8], type=int, help='Recall @ Values.')
@@ -109,10 +112,16 @@ if opt.dataset=='vehicle_id':
 
 if opt.loss == 'proxynca':
     opt.samples_per_class = 1
+elif opt.samples_per_class == 0:
+    # always put ALL images from a class into batch before considering the next class
+    # applicable for few-shot datasets (online-products, in-shop, vehicle-id)
+    print("samples_per_class=0, not enforced (few-shot mode)")
 else:
+    assert opt.samples_per_class > 0
     assert not opt.bs%opt.samples_per_class, 'Batchsize needs to fit number of samples per class for distance sampling and margin/triplet loss!'
 
-if opt.loss == 'npair' or opt.loss == 'proxynca': opt.sampling = 'None'
+if opt.loss == 'npair' or opt.loss == 'proxynca' or opt.loss == 'fastap':
+    opt.sampling = 'None'
 
 opt.pretrained = not opt.not_pretrained
 

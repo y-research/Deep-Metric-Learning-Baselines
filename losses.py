@@ -26,7 +26,8 @@ from sklearn.preprocessing import normalize
 
 from PIL import Image
 
-
+# FastAP loss proposed in CVPR'19 paper "Deep Metric Learning to Rank"
+from FastAP_loss import FastAPLoss
 
 """================================================================================================="""
 ############ LOSS SELECTION FUNCTION #####################
@@ -58,6 +59,10 @@ def loss_select(loss, opt, to_optim):
     elif loss=='crossentropy':
         loss_params  = {'n_classes':opt.num_classes, 'inp_dim':opt.embed_dim}
         criterion    = CEClassLoss(**loss_params)
+        to_optim    += [{'params':criterion.parameters(), 'lr':opt.lr, 'weight_decay':0}]
+    elif loss=='fastap':
+        loss_params  = {'num_bins':opt.histbins}
+        criterion    = FastAPLoss(**loss_params)
         to_optim    += [{'params':criterion.parameters(), 'lr':opt.lr, 'weight_decay':0}]
     else:
         raise Exception('Loss {} not available!'.format(loss))
@@ -182,8 +187,6 @@ class TupleSampler():
         bs = batch.shape[0]
 
         distances    = self.pdist(batch.detach()).clamp(min=lower_cutoff)
-
-
 
         positives, negatives = [],[]
         labels_visited = []
