@@ -27,7 +27,7 @@ from tqdm import tqdm
 
 import pretrainedmodels.utils as utils
 import auxiliaries as aux
-import itertools
+import itertools, math
 
 
 """============================================================================"""
@@ -527,8 +527,8 @@ class SuperLabelTrainDataset(Dataset):
         # checks
         assert self.batch_size % 2 == 0, "opt.bs should be an even number"
         self.half_bs = self.batch_size // 2
-        #if self.samples_per_class > 0:
-        #    assert self.half_bs % self.samples_per_class == 0, "opt.bs not a multiple of opt.samples_per_class"
+        if self.samples_per_class > 0:
+            assert self.half_bs % self.samples_per_class == 0, "opt.bs not a multiple of opt.samples_per_class"
 
         # provide avail_classes
         self.avail_classes = []
@@ -577,12 +577,26 @@ class SuperLabelTrainDataset(Dataset):
 
         for sid in self.super_image_lists.keys():
             all_imgs_in_super = self.super_image_lists[sid]
-            random.shuffle(all_imgs_in_super)  # shffule classes
-            for imgs in all_imgs_in_super:
-                random.shuffle(imgs)  # shuffle images in each class
 
-            # concat a "list of lists" into a long list
-            super_image_concat[sid] = list(itertools.chain.from_iterable(all_imgs_in_super))
+            if self.samples_per_class > 0:
+                chunks_list = []
+                for cls_imgs in all_imgs_in_super:
+                    random.shuffle(cls_imgs)
+                    num = len(cls_imgs)
+                    # take chunks of size `samples_per_class` and append to chunks_list
+                    for c in range(math.ceil(num / self.samples_per_class)):
+                        inds = [i % num for i in range(c*self.samples_per_class, (c+1)*self.samples_per_class)]
+                        chunks_list.append([cls_imgs[i] for i in inds])
+                # concat a "list of lists" into a long list
+                random.shuffle(chunks_list)
+                super_image_concat[sid] = list(itertools.chain.from_iterable(chunks_list))
+            else:
+                for cls_imgs in all_imgs_in_super:
+                    random.shuffle(cls_imgs)  # shuffle images in each class
+                # concat a "list of lists" into a long list
+                random.shuffle(all_imgs_in_super)
+                super_image_concat[sid] = list(itertools.chain.from_iterable(all_imgs_in_super))
+
             num_images[sid] = len(super_image_concat[sid])
             cur_pos[sid] = 0
 

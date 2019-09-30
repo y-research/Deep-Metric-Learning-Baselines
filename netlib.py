@@ -139,6 +139,9 @@ class GoogLeNet(nn.Module):
         return mod_x if self.pars.loss=='npair' else torch.nn.functional.normalize(mod_x, dim=-1)
 
 
+    def to_optim(self, opt):
+        return [{'params':model.parameters(),'lr':opt.lr,'weight_decay':opt.decay}]
+
 
 """============================================================="""
 class ResNet50(nn.Module):
@@ -168,6 +171,7 @@ class ResNet50(nn.Module):
 
         self.layer_blocks = nn.ModuleList([self.model.layer1, self.model.layer2, self.model.layer3, self.model.layer4])
 
+
     def forward(self, x, is_init_cluster_generation=False):
         x = self.model.maxpool(self.model.relu(self.model.bn1(self.model.conv1(x))))
 
@@ -180,3 +184,16 @@ class ResNet50(nn.Module):
         mod_x = self.model.last_linear(x)
         #No Normalization is used if N-Pair Loss is the target criterion.
         return mod_x if self.pars.loss=='npair' else torch.nn.functional.normalize(mod_x, dim=-1)
+
+
+    def to_optim(self, opt):
+        if 'fc_lr_mul' in vars(opt).keys() and opt.fc_lr_mul!=0:
+            return [{'params':self.model.conv1.parameters(),'lr':opt.lr,'weight_decay':opt.decay},
+                    {'params':self.model.bn1.parameters(),'lr':opt.lr,'weight_decay':opt.decay},
+                    {'params':self.model.layer1.parameters(),'lr':opt.lr,'weight_decay':opt.decay},
+                    {'params':self.model.layer2.parameters(),'lr':opt.lr,'weight_decay':opt.decay},
+                    {'params':self.model.layer3.parameters(),'lr':opt.lr,'weight_decay':opt.decay},
+                    {'params':self.model.layer4.parameters(),'lr':opt.lr,'weight_decay':opt.decay},
+                    {'params':self.model.last_linear.parameters(),'lr':opt.lr*opt.fc_lr_mul,'weight_decay':opt.decay}]
+        else:
+            return [{'params':self.parameters(),'lr':opt.lr,'weight_decay':opt.decay}]

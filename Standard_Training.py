@@ -39,7 +39,7 @@ import evaluate as eval
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
 
-
+import pdb
 
 ################### INPUT ARGUMENTS ###################
 parser = argparse.ArgumentParser()
@@ -150,13 +150,16 @@ print('{} Setup for {} with {} sampling on {} complete with #weights: {}'.format
 #Push to Device
 _          = model.to(opt.device)
 #Place trainable parameter in list of parameters to train:
-if 'fc_lr_mul' in vars(opt).keys() and opt.fc_lr_mul!=0:
-    all_but_fc_params = list(filter(lambda x: 'last_linear' not in x[0],model.named_parameters()))
-    fc_params         = model.model.last_linear.parameters()
-    to_optim          = [{'params':all_but_fc_params,'lr':opt.lr,'weight_decay':opt.decay},
-                         {'params':fc_params,'lr':opt.lr*opt.fc_lr_mul,'weight_decay':opt.decay}]
-else:
-    to_optim   = [{'params':model.parameters(),'lr':opt.lr,'weight_decay':opt.decay}]
+#if 'fc_lr_mul' in vars(opt).keys() and opt.fc_lr_mul!=0:
+#    all_but_fc_params = filter(lambda x: 'last_linear' not in x[0],model.named_parameters())
+#    fc_params         = model.model.last_linear.parameters()
+#    to_optim          = [{'params':all_but_fc_params,'lr':opt.lr,'weight_decay':opt.decay},
+#                         {'params':fc_params,'lr':opt.lr*opt.fc_lr_mul,'weight_decay':opt.decay}]
+#    print(to_optim)
+#    pdb.set_trace()
+#else:
+#    to_optim   = [{'params':model.parameters(),'lr':opt.lr,'weight_decay':opt.decay}]
+to_optim = model.to_optim(opt)
 
 
 
