@@ -86,12 +86,12 @@ def networkselect(opt):
 
     # initialize embedding layer
     if opt.embed_init == 'kaiming_normal':
-        torch.nn.init.kaiming_normal_(self.model.last_linear.weight, mode='fan_in', nonlinearity='relu')
-    if opt.embed_init == 'kaiming_uniform':
-        torch.nn.init.kaiming_uniform_(self.model.last_linear.weight, mode='fan_in', nonlinearity='relu')
-    elif: opt.embed_init == 'normal':
-        self.model.last_linear.weight.data.normal_(0, 0.01)
-        self.model.last_linear.bias.data.zero_()
+        torch.nn.init.kaiming_normal_(network.model.last_linear.weight, mode='fan_in', nonlinearity='relu')
+    elif opt.embed_init == 'kaiming_uniform':
+        torch.nn.init.kaiming_uniform_(network.model.last_linear.weight, mode='fan_in', nonlinearity='relu')
+    elif opt.embed_init == 'normal':
+        network.model.last_linear.weight.data.normal_(0, 0.01)
+        network.model.last_linear.bias.data.zero_()
     else:
         # do nothing, already intialized
         assert opt.embed_init == 'default'
@@ -102,7 +102,7 @@ def networkselect(opt):
         print(f"{opt.arch.upper()}: BatchNorm layers will be finetuned.")
     else:
         print(f"{opt.arch.upper()}: BatchNorm layers will NOT be finetuned.")
-        for module in filter(lambda m: type(m) == nn.BatchNorm2d, self.model.modules()):
+        for module in filter(lambda m: type(m) == nn.BatchNorm2d, network.model.modules()):
             module.eval()
             module.train = lambda _: None
 
@@ -160,6 +160,7 @@ class GoogLeNet(nn.Module):
 
 
     def to_optim(self, opt):
+        # TODO
         return [{'params':model.parameters(),'lr':opt.lr,'weight_decay':opt.decay}]
 
 
