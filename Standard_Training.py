@@ -39,7 +39,6 @@ import evaluate as eval
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
 
-import pdb
 
 ################### INPUT ARGUMENTS ###################
 parser = argparse.ArgumentParser()
@@ -73,9 +72,9 @@ parser.add_argument('--beta_constant',                      action='store_true',
 parser.add_argument('--proxy_lr',     default=0.00001,     type=float, help='PROXYNCA: Learning Rate for Proxies in ProxyNCALoss.')
 ### NPair L2 Penalty
 parser.add_argument('--l2npair',      default=0.02,        type=float, help='NPAIR: Penalty-value for non-normalized N-PAIR embeddings.')
-### FastAP number of histogram bins
-parser.add_argument('--histbins',      default=10,        type=int, help='FASTAP: Number of histogram bins in distance quantization.')
-parser.add_argument('--batches_per_super_pair',  default=5,   type=int, help='FASTAP: Number sampled batches per pair of super-labels.')
+### FastAP
+parser.add_argument('--histbins',     default=10,          type=int, help='FASTAP: Number of histogram bins in distance quantization.')
+parser.add_argument('--batches_per_super_pair', default=5, type=int, help='FASTAP: Number sampled batches per pair of super-labels.')
 
 ##### Evaluation Settings
 parser.add_argument('--k_vals',       nargs='+', default=[1,2,4,8], type=int, help='Recall @ Values.')

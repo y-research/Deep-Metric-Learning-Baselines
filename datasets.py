@@ -300,8 +300,16 @@ def give_InShop_datasets(opt):
     # super_train_dataset = BaseTripletDataset(super_train_image_dict, opt, is_validation=True)
 
     if opt.loss == 'fastap':
-        # TODO
-        train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
+        super_dict = {}
+        for img_path, classkey in train:
+            superkey = '_'.join(img_path.split('/')[1:3])  # eg. WOMEN_Dresses
+            if superkey not in super_dict.keys():
+                super_dict[superkey] = {}
+            if classkey not in super_dict[superkey].keys():
+                super_dict[superkey][classkey] = []
+            super_dict[superkey][classkey].append(opt.source_path+'/'+img_path)
+
+        train_dataset = SuperLabelTrainDataset(super_dict, opt)
     else:
         train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
 
@@ -557,7 +565,7 @@ class SuperLabelTrainDataset(Dataset):
                 self.super_image_lists[sid].append(cur_cid_list)
 
         # reshuffle
-        self.super_pairs = list(itertools.combinations(range(len(image_dict)), 2))
+        self.super_pairs = list(itertools.combinations(image_dict.keys(), 2))
         self.reshuffle()
 
     def ensure_3dim(self, img):
