@@ -63,7 +63,6 @@ def loss_select(loss, opt, to_optim):
     elif loss=='fastap':
         loss_params  = {'num_bins':opt.histbins}
         criterion    = FastAPLoss(**loss_params)
-        to_optim    += [{'params':criterion.parameters(), 'lr':opt.lr, 'weight_decay':0}]
     else:
         raise Exception('Loss {} not available!'.format(loss))
 

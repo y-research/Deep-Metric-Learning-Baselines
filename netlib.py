@@ -24,6 +24,7 @@ import pretrainedmodels.utils as utils
 import torchvision.models as models
 
 import googlenet
+import math
 
 
 
@@ -82,6 +83,29 @@ def networkselect(opt):
         network =  ResNet50(opt)
     else:
         raise Exception('Network {} not available!'.format(opt.arch))
+
+    # initialize embedding layer
+    if opt.embed_init == 'kaiming_normal':
+        torch.nn.init.kaiming_normal_(self.model.last_linear.weight, mode='fan_in', nonlinearity='relu')
+    if opt.embed_init == 'kaiming_uniform':
+        torch.nn.init.kaiming_uniform_(self.model.last_linear.weight, mode='fan_in', nonlinearity='relu')
+    elif: opt.embed_init == 'normal':
+        self.model.last_linear.weight.data.normal_(0, 0.01)
+        self.model.last_linear.bias.data.zero_()
+    else:
+        # do nothing, already intialized
+        assert opt.embed_init == 'default'
+    print(f"{opt.arch.upper()}: Embedding layer (last_linear) initialized with {opt.embed_init}")
+
+    # finetune BatchNorm layers?
+    if opt.ft_batchnorm:
+        print(f"{opt.arch.upper()}: BatchNorm layers will be finetuned.")
+    else:
+        print(f"{opt.arch.upper()}: BatchNorm layers will NOT be finetuned.")
+        for module in filter(lambda m: type(m) == nn.BatchNorm2d, self.model.modules()):
+            module.eval()
+            module.train = lambda _: None
+
     return network
 
 
@@ -106,10 +130,6 @@ class GoogLeNet(nn.Module):
         self.pars       = opt
 
         self.model = googlenet.googlenet(num_classes=1000, pretrained='imagenet' if not opt.not_pretrained else False)
-
-        for module in filter(lambda m: type(m) == nn.BatchNorm2d, self.model.modules()):
-            module.eval()
-            module.train = lambda _: None
 
         rename_attr(self.model, 'fc', 'last_linear')
 
@@ -156,20 +176,16 @@ class ResNet50(nn.Module):
         self.pars = opt
 
         if not opt.not_pretrained:
-            print('Getting pretrained weights...')
+            print('ResNet50: Getting pretrained weights...')
             self.model = ptm.__dict__['resnet50'](num_classes=1000, pretrained='imagenet')
-            print('Done.')
+            print('ResNet50: Done.')
         else:
-            print('Not utilizing pretrained weights!')
+            print('ResNet50: Not utilizing pretrained weights!')
             self.model = ptm.__dict__['resnet50'](num_classes=1000, pretrained=None)
 
-        for module in filter(lambda m: type(m) == nn.BatchNorm2d, self.model.modules()):
-            module.eval()
-            module.train = lambda _: None
+        self.layer_blocks = nn.ModuleList([self.model.layer1, self.model.layer2, self.model.layer3, self.model.layer4])
 
         self.model.last_linear = torch.nn.Linear(self.model.last_linear.in_features, opt.embed_dim)
-
-        self.layer_blocks = nn.ModuleList([self.model.layer1, self.model.layer2, self.model.layer3, self.model.layer4])
 
 
     def forward(self, x, is_init_cluster_generation=False):

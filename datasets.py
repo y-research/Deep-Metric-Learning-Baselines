@@ -300,15 +300,32 @@ def give_InShop_datasets(opt):
     # super_train_dataset = BaseTripletDataset(super_train_image_dict, opt, is_validation=True)
 
     if opt.loss == 'fastap':
-        super_dict = {}
+        # for In-Shop, the labels are structured as Gender/ClothingType/ClothingItem, where
+        # ClothingItem is the class label, and we take Gender_ClothingType as the super-label.
+        # To generate hard training batches, we take pairs of super-labels under the same 
+        # gender, e.g. (MEN_Denim, MEN_Pants), with the assumption that clothing types between
+        # genders are less similar, and thus easier to tell apart.
+        super_dict, gender_dict = {}, {}
         for img_path, classkey in train:
+            gender = img_path.split('/')[1]  # MEN / WOMEN
             superkey = '_'.join(img_path.split('/')[1:3])  # eg. WOMEN_Dresses
+
+            #if gender not in gender_dict.keys():
+            #    gender_dict[gender] = []
+            #if superkey not in gender_dict[gender]:
+            #    gender_dict[gender].append(superkey)
+
             if superkey not in super_dict.keys():
                 super_dict[superkey] = {}
             if classkey not in super_dict[superkey].keys():
                 super_dict[superkey][classkey] = []
             super_dict[superkey][classkey].append(opt.source_path+'/'+img_path)
 
+        #super_pairs = []
+        #for gender in gender_dict.keys():
+        #    pairs = list(itertools.combinations(gender_dict[gender], 2))
+        #    super_pairs += pairs
+        #train_dataset = SuperLabelTrainDataset(super_dict, opt, super_pairs)
         train_dataset = SuperLabelTrainDataset(super_dict, opt)
     else:
         train_dataset = BaseTripletDataset(train_image_dict, opt, samples_per_class=opt.samples_per_class)
@@ -434,8 +451,9 @@ class BaseTripletDataset(Dataset):
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
         transf_list = []
         if not self.is_validation:
-            transf_list.extend([transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
-                                transforms.RandomHorizontalFlip(0.5)])
+            transf_list.extend([transforms.Resize(256), 
+                transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
+                transforms.RandomHorizontalFlip(0.5)])
         else:
             transf_list.extend([transforms.Resize(256),
                                 transforms.CenterCrop(224) if opt.arch=='resnet50' else transforms.CenterCrop(227)])
@@ -522,7 +540,7 @@ class SuperLabelTrainDataset(Dataset):
     TODO:
         support samples_per_class
     """
-    def __init__(self, image_dict, opt):
+    def __init__(self, image_dict, opt, super_pairs=None):
         """
         Args:
             image_dict: two-level dict, `super_dict[super_class_id][class_id]` gives the list of 
@@ -546,8 +564,9 @@ class SuperLabelTrainDataset(Dataset):
         # Data augmentation/processing methods.
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
         transf_list = []
-        transf_list.extend([transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
-                            transforms.RandomHorizontalFlip(0.5)])
+        transf_list.extend([transforms.Resize(256), 
+            transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
+            transforms.RandomHorizontalFlip(0.5)])
         transf_list.extend([transforms.ToTensor(), normalize])
         self.transform = transforms.Compose(transf_list)
 
@@ -564,24 +583,29 @@ class SuperLabelTrainDataset(Dataset):
                 cur_cid_list = list(itertools.product([cid], image_dict[sid][cid]))
                 self.super_image_lists[sid].append(cur_cid_list)
 
-        # reshuffle
-        self.super_pairs = list(itertools.combinations(image_dict.keys(), 2))
+        if super_pairs is None:
+            self.super_pairs = list(itertools.combinations(image_dict.keys(), 2))
+        else:
+            self.super_pairs = super_pairs  # allow super_pairs to be supplied
+
         self.reshuffle()
+
 
     def ensure_3dim(self, img):
         if len(img.size) == 2:
             img = img.convert('RGB')
         return img
 
+
     def reshuffle(self):
         # for each super-label, concat all images into a long list:
-        # super_image_concat[super0]: [
+        # super_images[super0]: [
         #       (class0_in_super0, image0), (class0_in_super0, image1), ...
         #       (class1_in_super0, image0), (class1_in_super0, image1), ...
         #       ...
         #     ] 
         # ...
-        super_image_concat, num_images, cur_pos = {}, {}, {}
+        super_images, num_images, cur_pos = {}, {}, {}
 
         for sid in self.super_image_lists.keys():
             all_imgs_in_super = self.super_image_lists[sid]
@@ -597,15 +621,15 @@ class SuperLabelTrainDataset(Dataset):
                         chunks_list.append([cls_imgs[i] for i in inds])
                 # concat a "list of lists" into a long list
                 random.shuffle(chunks_list)
-                super_image_concat[sid] = list(itertools.chain.from_iterable(chunks_list))
+                super_images[sid] = list(itertools.chain.from_iterable(chunks_list))
             else:
                 for cls_imgs in all_imgs_in_super:
                     random.shuffle(cls_imgs)  # shuffle images in each class
                 # concat a "list of lists" into a long list
                 random.shuffle(all_imgs_in_super)
-                super_image_concat[sid] = list(itertools.chain.from_iterable(all_imgs_in_super))
+                super_images[sid] = list(itertools.chain.from_iterable(all_imgs_in_super))
 
-            num_images[sid] = len(super_image_concat[sid])
+            num_images[sid] = len(super_images[sid])
             cur_pos[sid] = 0
 
         # pre-compute all the batches
@@ -622,16 +646,13 @@ class SuperLabelTrainDataset(Dataset):
             # sample `batches_per_super_pair` batches
             for b in range(self.batches_per_super_pair):
                 # get half of the batch from each super-label
-                cur_batch = []
-                for i in range(self.half_bs):
-                    ind0 = (cur_pos[s0]+i) % num_images[s0]
-                    ind1 = (cur_pos[s1]+i) % num_images[s1]
-                    cur_batch.append(super_image_concat[s0][ind0])
-                    cur_batch.append(super_image_concat[s1][ind1])
+                ind0 = [(cur_pos[s0]+i) % num_images[s0] for i in range(self.half_bs)]
+                ind1 = [(cur_pos[s1]+i) % num_images[s1] for i in range(self.half_bs)]
+                cur_batch = [super_images[s0][i] for i in ind0] + [super_images[s1][i] for i in ind1]
 
                 # move pointers and append to list
-                cur_pos[s0] = (cur_pos[s0] + self.half_bs) % num_images[s0]
-                cur_pos[s1] = (cur_pos[s1] + self.half_bs) % num_images[s1]
+                cur_pos[s0] = (ind0[-1] + 1) % num_images[s0]
+                cur_pos[s1] = (ind1[-1] + 1) % num_images[s1]
                 self.batches.append(cur_batch)
 
 

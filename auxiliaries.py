@@ -193,7 +193,7 @@ def eval_metrics_one_dataset(model, test_dataloader, device, k_vals, opt):
     with torch.no_grad():
         ### For all test images, extract features
         target_labels, feature_coll = [],[]
-        final_iter = tqdm(test_dataloader, desc='Computing Evaluation Metrics...')
+        final_iter = tqdm(test_dataloader, desc='Extracting Features')
         image_paths= [x[0] for x in test_dataloader.dataset.image_list]
         for idx,inp in enumerate(final_iter):
             input_img,target = inp[-1], inp[0]
@@ -268,7 +268,7 @@ def eval_metrics_query_and_gallery_dataset(model, query_dataloader, gallery_data
         ### For all query test images, extract features
         query_target_labels, query_feature_coll     = [],[]
         query_image_paths   = [x[0] for x in query_dataloader.dataset.image_list]
-        query_iter = tqdm(query_dataloader, desc='Extraction Query Features')
+        query_iter = tqdm(query_dataloader, desc='Extracting Query Features')
         for idx,inp in enumerate(query_iter):
             input_img,target = inp[-1], inp[0]
             query_target_labels.extend(target.numpy().tolist())
@@ -278,7 +278,7 @@ def eval_metrics_query_and_gallery_dataset(model, query_dataloader, gallery_data
         ### For all gallery test images, extract features
         gallery_target_labels, gallery_feature_coll = [],[]
         gallery_image_paths = [x[0] for x in gallery_dataloader.dataset.image_list]
-        gallery_iter = tqdm(gallery_dataloader, desc='Extraction Gallery Features')
+        gallery_iter = tqdm(gallery_dataloader, desc='Extracting Gallery Features')
         for idx,inp in enumerate(gallery_iter):
             input_img,target = inp[-1], inp[0]
             gallery_target_labels.extend(target.numpy().tolist())
@@ -562,8 +562,9 @@ def set_logging(opt):
     #Create start-time-based name if opt.savename is not give.
     if opt.savename == '':
         date = datetime.datetime.now()
-        time_string = '{}-{}-{}-{}-{}-{}'.format(date.year, date.month, date.day, date.hour, date.minute, date.second)
-        checkfolder = opt.save_path+'/{}_{}_'.format(opt.dataset.upper(), opt.arch.upper())+time_string
+        time_string = '{}{:02d}{:02d}-{:02d}{:02d}{:02d}'.format(date.year, date.month, date.day, date.hour, date.minute, date.second)
+        #checkfolder = opt.save_path+'/{}_{}_'.format(opt.dataset.upper(), opt.arch.upper())+time_string
+        checkfolder = opt.save_path+'/{}_{}_{}d_'.format(opt.loss.upper(), opt.arch.upper(), opt.embed_dim)+time_string
 
     #If folder already exists, iterate over it until is doesn't.
     counter     = 1
