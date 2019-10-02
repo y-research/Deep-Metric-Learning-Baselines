@@ -564,7 +564,16 @@ def set_logging(opt):
         date = datetime.datetime.now()
         time_string = '{}{:02d}{:02d}-{:02d}{:02d}{:02d}'.format(date.year, date.month, date.day, date.hour, date.minute, date.second)
         #checkfolder = opt.save_path+'/{}_{}_'.format(opt.dataset.upper(), opt.arch.upper())+time_string
-        checkfolder = opt.save_path+'/{}_{}_{}d_'.format(opt.loss.upper(), opt.arch.upper(), opt.embed_dim)+time_string
+        checkfolder = opt.save_path + f"/{opt.loss}_{opt.arch}_{opt.embed_dim}d_{opt.embed_init}"
+        checkfolder += f"_bs{opt.bs}_lr{opt.lr}_mul{opt.fc_lr_mul}_decay{opt.decay}"
+        checkfolder += f"_gamma{opt.gamma}_tau{'_'.join([str(x) for x in opt.tau])}"
+        if opt.ft_batchnorm:
+            checkfolder += "_bnft"
+        if opt.resize256:
+            checkfolder += "_resize256"
+        if opt.samples_per_class > 0:
+            checkfolder += f"_spc{opt.samples_per_class}"
+        checkfolder += ("_" + time_string)
 
     #If folder already exists, iterate over it until is doesn't.
     counter     = 1

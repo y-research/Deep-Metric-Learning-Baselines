@@ -52,7 +52,7 @@ parser.add_argument('--fc_lr_mul',         default=0,        type=float, help='O
 parser.add_argument('--n_epochs',          default=70,       type=int,   help='Number of training epochs.')
 parser.add_argument('--kernels',           default=8,        type=int,   help='Number of workers for pytorch dataloader.')
 parser.add_argument('--bs',                default=112 ,     type=int,   help='Mini-Batchsize to use.')
-parser.add_argument('--samples_per_class', default=4,        type=int,   help='Number of samples in one class drawn before choosing the next class. Set to >1 for losses other than ProxyNCA.')
+parser.add_argument('--samples_per_class', default=0,        type=int,   help='Number of samples in one class drawn before choosing the next class. Set to >1 for losses other than ProxyNCA.')
 parser.add_argument('--seed',              default=1,        type=int,   help='Random seed for reproducibility.')
 parser.add_argument('--scheduler',         default='step',   type=str,   help='Type of learning rate scheduling. Currently: step & exp.')
 parser.add_argument('--gamma',             default=0.3,      type=float, help='Learning rate reduction after tau epochs.')
@@ -114,10 +114,8 @@ if opt.dataset=='vehicle_id':
 
 if opt.loss == 'fastap':
     if opt.dataset=='online_products':
-        opt.samples_per_class = 0
         opt.batches_per_super_pair = 10
     elif opt.dataset=='in-shop':
-        opt.samples_per_class = 0
         opt.batches_per_super_pair = 4
 
 if opt.loss == 'proxynca':
@@ -307,9 +305,9 @@ def train_one_epoch(train_dataloader, model, optimizer, criterion, opt, epoch):
 print('\n-----\n')
 for epoch in range(opt.n_epochs):
     if epoch%3 == 0:
-        print(f"dataset:{opt.dataset}, arch:{opt.arch}, embed_dim:{opt.embed_dim}, embed_init:{opt.embed_init}")
+        print(f"GPU:{opt.gpu}, dataset:{opt.dataset}, arch:{opt.arch}, embed_dim:{opt.embed_dim}, embed_init:{opt.embed_init}")
         print(f"loss:{opt.loss}, sampling:{opt.sampling}, samples_per_class:{opt.samples_per_class}, resize256:{opt.resize256}")
-        print(f"bs:{opt.bs}, lr:{opt.lr}, fc_lr_mul:{opt.fc_lr_mul}, decay:{opt.decay}, gamma:{opt.gamma}, tau:{opt.tau}")
+        print(f"bs:{opt.bs}, lr:{opt.lr}, fc_lr_mul:{opt.fc_lr_mul}, decay:{opt.decay}, gamma:{opt.gamma}, tau:{opt.tau}, bnft:{opt.ft_batchnorm}")
 
     ### Print current learning rates for all parameters
     if opt.scheduler!='none': print('Running with learning rates {}...'.format(' | '.join('{}'.format(x) for x in scheduler.get_lr())))
