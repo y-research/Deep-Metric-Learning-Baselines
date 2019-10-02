@@ -83,6 +83,7 @@ parser.add_argument('--k_vals',       nargs='+', default=[1,2,4,8], type=int, he
 parser.add_argument('--embed_dim',    default=128,         type=int,   help='Embedding dimensionality of the network. Note: in literature, dim=128 is used for ResNet50 and dim=512 for GoogLeNet.')
 parser.add_argument('--embed_init',   default='default',   type=str,   help='Embedding layer initialization method: {default, kaiming_normal, kaiming_uniform, normal}')
 parser.add_argument('--arch',         default='resnet50',  type=str,   help='Network backend choice: resnet50, googlenet.')
+parser.add_argument('--resize256',                         action='store_true', help='If added, resize training images to 256x256 first.')
 parser.add_argument('--ft_batchnorm',                      action='store_true', help='If added, BatchNorm layers will be un-frozen for finetuning.')
 parser.add_argument('--not_pretrained',                    action='store_true', help='If added, the network will be trained WITHOUT ImageNet-pretrained weights.')
 parser.add_argument('--grad_measure',                      action='store_true', help='If added, gradients passed from embedding layer to the last conv-layer are stored in each iteration.')
@@ -307,7 +308,7 @@ print('\n-----\n')
 for epoch in range(opt.n_epochs):
     if epoch%3 == 0:
         print(f"dataset:{opt.dataset}, arch:{opt.arch}, embed_dim:{opt.embed_dim}, embed_init:{opt.embed_init}")
-        print(f"loss:{opt.loss}, sampling:{opt.sampling}, samples_per_class:{opt.samples_per_class}")
+        print(f"loss:{opt.loss}, sampling:{opt.sampling}, samples_per_class:{opt.samples_per_class}, resize256:{opt.resize256}")
         print(f"bs:{opt.bs}, lr:{opt.lr}, fc_lr_mul:{opt.fc_lr_mul}, decay:{opt.decay}, gamma:{opt.gamma}, tau:{opt.tau}")
 
     ### Print current learning rates for all parameters

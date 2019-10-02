@@ -451,7 +451,9 @@ class BaseTripletDataset(Dataset):
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
         transf_list = []
         if not self.is_validation:
-            transf_list.extend([transforms.Resize(256), 
+            if opt.resize256:
+                transf_list.extend([transforms.Resize(256)])
+            transf_list.extend([
                 transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
                 transforms.RandomHorizontalFlip(0.5)])
         else:
@@ -564,7 +566,9 @@ class SuperLabelTrainDataset(Dataset):
         # Data augmentation/processing methods.
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
         transf_list = []
-        transf_list.extend([transforms.Resize(256), 
+        if opt.resize256:
+            transf_list.extend([transforms.Resize(256)]) 
+        transf_list.extend([
             transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
             transforms.RandomHorizontalFlip(0.5)])
         transf_list.extend([transforms.ToTensor(), normalize])
