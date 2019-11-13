@@ -90,6 +90,8 @@ parser.add_argument('--grad_measure',                      action='store_true', 
 parser.add_argument('--dist_measure',                      action='store_true', help='If added, the ratio between intra- and interclass distances is stored after each epoch.')
 
 ##### Setup Parameters
+parser.add_argument('--init_pth',     default=None, type=str)
+parser.add_argument('--eval_only',                         action='store_true', help='If added, only evaluate model.')
 parser.add_argument('--gpu',          default=0,           type=int,   help='GPU-id for GPU to use.')
 parser.add_argument('--savename',     default='',          type=str,   help='Save folder name if any special information is to be included.')
 
@@ -303,6 +305,10 @@ def train_one_epoch(train_dataloader, model, optimizer, criterion, opt, epoch):
 """============================================================================"""
 ################### SCRIPT MAIN ##########################
 print('\n-----\n')
+if opt.eval_only:
+    opt.n_epochs = 1
+    print("Evaluation-only mode!")
+
 for epoch in range(opt.n_epochs):
     if epoch%3 == 0:
         print(f"GPU:{opt.gpu}, dataset:{opt.dataset}, arch:{opt.arch}, embed_dim:{opt.embed_dim}, embed_init:{opt.embed_init}")
@@ -310,11 +316,13 @@ for epoch in range(opt.n_epochs):
         print(f"bs:{opt.bs}, lr:{opt.lr}, fc_lr_mul:{opt.fc_lr_mul}, decay:{opt.decay}, gamma:{opt.gamma}, tau:{opt.tau}, bnft:{opt.ft_batchnorm}")
 
     ### Print current learning rates for all parameters
-    if opt.scheduler!='none': print('Running with learning rates {}...'.format(' | '.join('{}'.format(x) for x in scheduler.get_lr())))
+    if not opt.eval_only and opt.scheduler!='none': 
+        print('Running with learning rates {}...'.format(' | '.join('{}'.format(x) for x in scheduler.get_lr())))
 
     ### Train one epoch
-    _ = model.train()
-    train_one_epoch(dataloaders['training'], model, optimizer, criterion, opt, epoch)
+    if not opt.eval_only:
+        _ = model.train()
+        train_one_epoch(dataloaders['training'], model, optimizer, criterion, opt, epoch)
 
     ### Evaluate
     _ = model.eval()
@@ -338,7 +346,7 @@ for epoch in range(opt.n_epochs):
         # distance_measure_test.measure(model, epoch)
 
     ### Learning Rate Scheduling Step
-    if opt.scheduler != 'none':
+    if not opt.eval_only and opt.scheduler != 'none':
         scheduler.step()
 
     print('\n-----\n')

@@ -454,11 +454,11 @@ class BaseTripletDataset(Dataset):
             if opt.resize256:
                 transf_list.extend([transforms.Resize(256)])
             transf_list.extend([
-                transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
+                transforms.RandomResizedCrop(size=224) if opt.arch in ['resnet50', 'resnet50_mcn'] else transforms.RandomResizedCrop(size=227),
                 transforms.RandomHorizontalFlip(0.5)])
         else:
             transf_list.extend([transforms.Resize(256),
-                                transforms.CenterCrop(224) if opt.arch=='resnet50' else transforms.CenterCrop(227)])
+                                transforms.CenterCrop(224) if opt.arch in ['resnet50', 'resnet50_mcn'] else transforms.CenterCrop(227)])
 
         transf_list.extend([transforms.ToTensor(), normalize])
         self.transform = transforms.Compose(transf_list)
@@ -569,7 +569,7 @@ class SuperLabelTrainDataset(Dataset):
         if opt.resize256:
             transf_list.extend([transforms.Resize(256)]) 
         transf_list.extend([
-            transforms.RandomResizedCrop(size=224) if opt.arch=='resnet50' else transforms.RandomResizedCrop(size=227),
+            transforms.RandomResizedCrop(size=224) if opt.arch in ['resnet50', 'resnet50_mcn'] else transforms.RandomResizedCrop(size=227),
             transforms.RandomHorizontalFlip(0.5)])
         transf_list.extend([transforms.ToTensor(), normalize])
         self.transform = transforms.Compose(transf_list)
