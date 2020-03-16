@@ -102,6 +102,7 @@ def networkselect(opt):
     else:
         # do nothing, already intialized
         assert opt.embed_init == 'default'
+
     print(f"{opt.arch.upper()}: Embedding layer (last_linear) initialized with {opt.embed_init}")
 
     # finetune BatchNorm layers?

@@ -29,6 +29,8 @@ from PIL import Image
 # FastAP loss proposed in CVPR'19 paper "Deep Metric Learning to Rank"
 from FastAP_loss import FastAPLoss
 
+from y.swap_precision import SwapPrecision, RankAwareSwapPrecision, RankAwareMargin
+
 """================================================================================================="""
 ############ LOSS SELECTION FUNCTION #####################
 def loss_select(loss, opt, to_optim):
@@ -63,6 +65,29 @@ def loss_select(loss, opt, to_optim):
     elif loss=='fastap':
         loss_params  = {'num_bins':opt.histbins}
         criterion    = FastAPLoss(**loss_params)
+
+    elif loss == 'SwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity':True, 'opt':opt}
+        criterion = SwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'RankAwareSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = RankAwareSwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'RankAwareMargin':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = RankAwareMargin(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+
     else:
         raise Exception('Loss {} not available!'.format(loss))
 
