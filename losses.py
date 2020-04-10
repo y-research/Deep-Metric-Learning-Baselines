@@ -29,8 +29,7 @@ from PIL import Image
 # FastAP loss proposed in CVPR'19 paper "Deep Metric Learning to Rank"
 from FastAP_loss import FastAPLoss
 
-from y.swap_precision import SwapPrecision, RankAwareSwapPrecision, RankAwareMargin
-from y.linlog import LinLogEnergy
+from y.swap_precision import SwapPrecision, RankAwareSwapPrecision, RankAwareMargin, BetaMinusOriginSwapPrecision, BetaKMeanSepSwapPrecision, BetaMinusMeanSwapPrecision, SwapPrecisionPaper
 
 """================================================================================================="""
 ############ LOSS SELECTION FUNCTION #####################
@@ -74,6 +73,13 @@ def loss_select(loss, opt, to_optim):
         # todo ? weight_decay
         to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
 
+    elif loss == 'SwapPrecisionPaper':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity':True, 'opt':opt}
+        criterion = SwapPrecisionPaper(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
     elif loss == 'RankAwareSwapPrecision':
         loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
         criterion = RankAwareSwapPrecision(**loss_params)
@@ -88,10 +94,25 @@ def loss_select(loss, opt, to_optim):
         # todo ? weight_decay
         to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
 
-    elif loss == 'LinLogEnergy':
-        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': False, 'opt': opt}
-        criterion = LinLogEnergy(**loss_params)
+    elif loss == 'BetaMinusOriginSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = BetaMinusOriginSwapPrecision(**loss_params)
 
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'BetaKMeanSepSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = BetaKMeanSepSwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'BetaMinusMeanSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = BetaMinusMeanSwapPrecision(**loss_params)
+
+        # todo ? weight_decay
         to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
 
     else:

@@ -41,7 +41,7 @@ def give_dataloaders(dataset, opt):
         dataloaders: dict of dataloaders for training, testing and evaluation on training.
     """
     #Dataset selection
-    if opt.dataset=='cub200':
+    if opt.dataset=='CUB_200_2011':
         datasets = give_CUB200_datasets(opt)
     elif opt.dataset=='cars196':
         datasets = give_CARS196_datasets(opt)

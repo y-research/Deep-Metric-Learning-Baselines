@@ -53,7 +53,7 @@ def evaluate(dataset, LOG, **kwargs):
     Returns:
         (optional) Computed metrics. Are normally written directly to LOG and printed.
     """
-    if dataset in ['cars196', 'cub200', 'online_products']:
+    if dataset in ['cars196', 'CUB_200_2011', 'online_products']:
         ret = evaluate_one_dataset(LOG, **kwargs)
     elif dataset in ['in-shop']:
         ret = evaluate_query_and_gallery_dataset(LOG, **kwargs)
