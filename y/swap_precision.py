@@ -9,9 +9,8 @@
 
 import torch
 
-from y.util import get_pairwise_stds, get_pairwise_similarity, dist
+from y.util import get_pairwise_stds, get_pairwise_similarity, dist, ANCHOR_ID
 
-ANCHOR_ID = ['Anchor', 'Class']
 
 def swap_precision(simi_mat, cls_match_mat, k=None, margin=None):
     '''

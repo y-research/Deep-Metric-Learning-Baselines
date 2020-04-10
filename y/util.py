@@ -12,6 +12,8 @@ import torch
 from y.l2r_global import tensor, torch_one, torch_zero
 
 
+ANCHOR_ID = ['Anchor', 'Class'] # corresponding to anchor-wise list or class-wise list
+
 def get_pairwise_stds(batch_labels):
 	"""
 	:param batch_labels: [batch_size], for each element of the batch assigns a class [0,...,C-1]

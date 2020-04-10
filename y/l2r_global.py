@@ -22,8 +22,8 @@ epsilon  = 1e-8
 """ GPU Setting If Expected """
 
 #global_gpu, global_device, gpu_id = False, 'cpu', None
-global_gpu, global_device, gpu_id = True, 'cuda:0', 0
-#global_gpu, global_device, gpu_id = True, 'cuda:1', 1
+#global_gpu, global_device, gpu_id = True, 'cuda:0', 0
+global_gpu, global_device, gpu_id = True, 'cuda:1', 1
 
 #
 if global_gpu: torch.cuda.set_device(gpu_id)

@@ -30,6 +30,7 @@ from PIL import Image
 from FastAP_loss import FastAPLoss
 
 from y.swap_precision import SwapPrecision, RankAwareSwapPrecision, RankAwareMargin
+from y.linlog import LinLogEnergy
 
 """================================================================================================="""
 ############ LOSS SELECTION FUNCTION #####################
@@ -87,6 +88,11 @@ def loss_select(loss, opt, to_optim):
         # todo ? weight_decay
         to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
 
+    elif loss == 'LinLogEnergy':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': False, 'opt': opt}
+        criterion = LinLogEnergy(**loss_params)
+
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
 
     else:
         raise Exception('Loss {} not available!'.format(loss))

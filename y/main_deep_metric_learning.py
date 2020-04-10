@@ -364,13 +364,13 @@ if __name__ == '__main__':
     ##### Loss-specific Settings
     #parser.add_argument('--loss', default='marginloss', type=str, help='loss options: marginloss, triplet, npair, proxynca')
     # test 'SwapPrecision', 'RankAwareSwapPrecision', 'RankAwareMargin'
-    parser.add_argument('--loss', default='RankAwareMargin', type=str, help='loss options: marginloss, triplet, npair, proxynca')
+    parser.add_argument('--loss', default='LinLogEnergy', type=str, help='loss options: marginloss, triplet, npair, proxynca, RankAwareMargin, LinLogEnergy')
 
     parser.add_argument('--anchor_id', default='Anchor', type=str, help='anchor-wise list or class-wise list')
     parser.add_argument('--sampling', default='distance', type=str, help='For triplet-based losses: Modes of Sampling: random, semihard, distance.')
 
     ### MarginLoss
-    parser.add_argument('--margin', default=0.2, type=float, help='TRIPLET/MARGIN: Margin for Triplet-based Losses')
+    parser.add_argument('--margin', default=0.1, type=float, help='TRIPLET/MARGIN: Margin for Triplet-based Losses') # 0.1, 0.2
     parser.add_argument('--beta_lr', default=0.0005, type=float, help='MARGIN: Learning Rate for class margin parameters in MarginLoss')
     parser.add_argument('--beta', default=1.2, type=float, help='MARGIN: Initial Class Margin Parameter in Margin Loss')
     parser.add_argument('--nu', default=0, type=float, help='MARGIN: Regularisation value on betas in Margin Loss.')
