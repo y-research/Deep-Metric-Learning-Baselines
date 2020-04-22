@@ -311,111 +311,122 @@ def run(opt=None):
 
 if __name__ == '__main__':
 
-    for k in [5, 10]:# k=5, bs=60 RuntimeError: CUDA out of memory , k=5 bs=70 mada
-        for bs in [100]:
-            for lossf in ['SwapPrecision', 'BetaMinusMeanSwapPrecision',
-                          'BetaMinusOriginSwapPrecision']:  # BetaKMeanSepSwapPrecision
+    # for k in [5, 10]:# k=5, bs=60 RuntimeError: CUDA out of memory , k=5 bs=70 mada
+    #     for bs in [100]:
+    for ds in ['online_products']:#'CUB_200_2011', 'cars196', 
+        for lossf in ['SwapPrecision', 'BetaMinusOriginSwapPrecision']:  # BetaKMeanSepSwapPrecision
+            if ds == 'cars196' or ds == 'online_products':
                 root_dataset = '/home/dl-box/WorkBench/Datasets/CVPR/'
-                # root_dataset = '/home/dl-box/WorkBench/Pool/CUB200-2011/'
-                root_output  = '/home/dl-box/WorkBench/CodeBench/PyCharmProject/Project_output/Out_img_metric/'
-                ################### INPUT ARGUMENTS ###################
-                parser = argparse.ArgumentParser()
-                parser.add_argument('--seed', default=135, type=int, help='Random seed for reproducibility.')
+            elif ds == 'CUB_200_2011':
+                root_dataset = '/home/dl-box/WorkBench/Pool/CUB200-2011/'
+            if lossf == 'SwapPrecision':
+                bs = 100
+                k = 5
+            elif ds == 'online_products' and lossf == 'BetaMinusOriginSwapPrecision':
+                bs = 100
+                k = 5
+            else:
+                bs = 50
+                k = 10
+            root_output  = '/home/dl-box/WorkBench/CodeBench/PyCharmProject/Project_output/Out_img_metric/'
+            ################### INPUT ARGUMENTS ###################
+            parser = argparse.ArgumentParser()
+            parser.add_argument('--seed', default=135, type=int, help='Random seed for reproducibility.')
 
-                ##### In/Out Parameters
-                parser.add_argument('--gpu', default=0, type=int, help='GPU-id for GPU to use.') # now controlled by l2r_global
-                parser.add_argument('--init_pth', default=None, type=str)
-                parser.add_argument('--savename', default='', type=str, help='Save folder name if any special information is to be included.')
-                ### Paths to datasets and storage folder
-                parser.add_argument('--source_path', default=os.getcwd() + '/Datasets', type=str, help='Path to training data.')
-                parser.add_argument('--save_path', default=os.getcwd() + '/Training_Results', type=str, help='Where to save everything.')
+            ##### In/Out Parameters
+            parser.add_argument('--gpu', default=0, type=int, help='GPU-id for GPU to use.') # now controlled by l2r_global
+            parser.add_argument('--init_pth', default=None, type=str)
+            parser.add_argument('--savename', default='', type=str, help='Save folder name if any special information is to be included.')
+            ### Paths to datasets and storage folder
+            parser.add_argument('--source_path', default=os.getcwd() + '/Datasets', type=str, help='Path to training data.')
+            parser.add_argument('--save_path', default=os.getcwd() + '/Training_Results', type=str, help='Where to save everything.')
 
-                ##### Evaluation Settings
-                parser.add_argument('--k_vals', nargs='+', default=[1, 2, 4, 8], type=int, help='Recall @ Values.')
-                parser.add_argument('--eval_only', action='store_true', help='If added, only evaluate model.')
+            ##### Evaluation Settings
+            parser.add_argument('--k_vals', nargs='+', default=[1, 2, 4, 8], type=int, help='Recall @ Values.')
+            parser.add_argument('--eval_only', action='store_true', help='If added, only evaluate model.')
 
-                ##### Network parameters
-                parser.add_argument('--embed_dim', default=128, type=int,
-                                    help='Embedding dimensionality of the network. Note: in literature, dim=128 is used for ResNet50 and dim=512 for GoogLeNet.')
-                parser.add_argument('--embed_init', default='default', type=str,
-                                    help='Embedding layer initialization method: {default, kaiming_normal, kaiming_uniform, normal}')
-                parser.add_argument('--arch', default='resnet50', type=str, help='Network backend choice: resnet50, googlenet.')
-                parser.add_argument('--resize256', action='store_true', help='If added, resize training images to 256x256 first.')
-                parser.add_argument('--ft_batchnorm', action='store_true',
-                                    help='If added, BatchNorm layers will be un-frozen for finetuning.')
-                parser.add_argument('--not_pretrained', action='store_true',
-                                    help='If added, the network will be trained WITHOUT ImageNet-pretrained weights.')
-                parser.add_argument('--grad_measure', action='store_true',
-                                    help='If added, gradients passed from embedding layer to the last conv-layer are stored in each iteration.')
-                parser.add_argument('--dist_measure', action='store_true',
-                                    help='If added, the ratio between intra- and interclass distances is stored after each epoch.')
+            ##### Network parameters
+            parser.add_argument('--embed_dim', default=128, type=int,
+                                help='Embedding dimensionality of the network. Note: in literature, dim=128 is used for ResNet50 and dim=512 for GoogLeNet.')
+            parser.add_argument('--embed_init', default='default', type=str,
+                                help='Embedding layer initialization method: {default, kaiming_normal, kaiming_uniform, normal}')
+            parser.add_argument('--arch', default='resnet50', type=str, help='Network backend choice: resnet50, googlenet.')
+            parser.add_argument('--resize256', action='store_true', help='If added, resize training images to 256x256 first.')
+            parser.add_argument('--ft_batchnorm', action='store_true',
+                                help='If added, BatchNorm layers will be un-frozen for finetuning.')
+            parser.add_argument('--not_pretrained', action='store_true',
+                                help='If added, the network will be trained WITHOUT ImageNet-pretrained weights.')
+            parser.add_argument('--grad_measure', action='store_true',
+                                help='If added, gradients passed from embedding layer to the last conv-layer are stored in each iteration.')
+            parser.add_argument('--dist_measure', action='store_true',
+                                help='If added, the ratio between intra- and interclass distances is stored after each epoch.')
 
-                ####### Main Parameter: Dataset to use for Training
-                parser.add_argument('--dataset', default='online_products', type=str, help='Dataset to use.') #online_products, cars196, CUB_200_2011
+            ####### Main Parameter: Dataset to use for Training
+            parser.add_argument('--dataset', default=ds, type=str, help='Dataset to use.') #online_products, cars196, CUB_200_2011
 
-                ### General Training Parameters
+            ### General Training Parameters
 
-                parser.add_argument('--fc_lr_mul', default=0, type=float, help='OPTIONAL: Multiply the embedding layer learning rate by this value. If set to 0, the embedding layer shares the same learning rate.')
+            parser.add_argument('--fc_lr_mul', default=0, type=float, help='OPTIONAL: Multiply the embedding layer learning rate by this value. If set to 0, the embedding layer shares the same learning rate.')
 
-                parser.add_argument('--n_epochs', default=100, type=int, help='Number of training epochs.')
-                parser.add_argument('--bs', default=bs, type=int, help='Mini-Batchsize to use. default=100')#55
+            parser.add_argument('--n_epochs', default=100, type=int, help='Number of training epochs.')
+            parser.add_argument('--bs', default=bs, type=int, help='Mini-Batchsize to use. default=100')#55
 
-                parser.add_argument('--samples_per_class', default=10, type=int, help='Number of samples in one class drawn before choosing the next class. Set to >1 for losses other than ProxyNCA.')
+            parser.add_argument('--samples_per_class', default=10, type=int, help='Number of samples in one class drawn before choosing the next class. Set to >1 for losses other than ProxyNCA.')
 
-                parser.add_argument('--kernels', default=8, type=int, help='Number of workers for pytorch dataloader.')
+            parser.add_argument('--kernels', default=8, type=int, help='Number of workers for pytorch dataloader.')
 
-                parser.add_argument('--lr', default=0.00001, type=float, help='Learning Rate for network parameters.')
-                parser.add_argument('--scheduler', default='step', type=str, help='Type of learning rate scheduling. Currently: step & exp.')
-                parser.add_argument('--decay', default=0.0004, type=float, help='Weight decay for optimizer.')
-                parser.add_argument('--gamma', default=0.3, type=float, help='Learning rate reduction after tau epochs.')
-                parser.add_argument('--tau', default=[40, 80], nargs='+', type=int, help='Stepsize(s) before reducing learning rate.')
+            parser.add_argument('--lr', default=0.00001, type=float, help='Learning Rate for network parameters.')
+            parser.add_argument('--scheduler', default='step', type=str, help='Type of learning rate scheduling. Currently: step & exp.')
+            parser.add_argument('--decay', default=0.0004, type=float, help='Weight decay for optimizer.')
+            parser.add_argument('--gamma', default=0.3, type=float, help='Learning rate reduction after tau epochs.')
+            parser.add_argument('--tau', default=[40, 80], nargs='+', type=int, help='Stepsize(s) before reducing learning rate.')
 
-                ##### Loss-specific Settings
-                #parser.add_argument('--loss', default='marginloss', type=str, help='loss options: marginloss, triplet, npair, proxynca')
-                # test 'SwapPrecision', 'RankAwareSwapPrecision', 'RankAwareMargin' , 'BetaMinusOriginSwapPrecision' , 'BetaKMeanSepSwapPrecision' , 'BetaMinusMeanSwapPrecision' , 'SwapPrecisionPaper'
-                parser.add_argument('--loss', default=lossf, type=str, help='loss options: marginloss, triplet, npair, proxynca, RankAwareMargin')
+            ##### Loss-specific Settings
+            #parser.add_argument('--loss', default='marginloss', type=str, help='loss options: marginloss, triplet, npair, proxynca')
+            # test 'SwapPrecision', 'RankAwareSwapPrecision', 'RankAwareMargin' , 'BetaMinusOriginSwapPrecision' , 'BetaKMeanSepSwapPrecision' , 'BetaMinusMeanSwapPrecision' , 'SwapPrecisionPaper'
+            parser.add_argument('--loss', default=lossf, type=str, help='loss options: marginloss, triplet, npair, proxynca, RankAwareMargin')
 
-                parser.add_argument('--anchor_id', default='Anchor', type=str, help='anchor-wise list or class-wise list')
-                parser.add_argument('--sampling', default='distance', type=str, help='For triplet-based losses: Modes of Sampling: random, semihard, distance.')
+            parser.add_argument('--anchor_id', default='Anchor', type=str, help='anchor-wise list or class-wise list')
+            parser.add_argument('--sampling', default='distance', type=str, help='For triplet-based losses: Modes of Sampling: random, semihard, distance.')
 
-                ### MarginLoss
-                parser.add_argument('--margin', default=0.1, type=float, help='TRIPLET/MARGIN: Margin for Triplet-based Losses')
-                parser.add_argument('--beta_lr', default=0.0005, type=float, help='MARGIN: Learning Rate for class margin parameters in MarginLoss')
-                parser.add_argument('--beta', default=1.2, type=float, help='MARGIN: Initial Class Margin Parameter in Margin Loss')
-                parser.add_argument('--nu', default=0, type=float, help='MARGIN: Regularisation value on betas in Margin Loss.')
-                parser.add_argument('--beta_constant', action='store_true', help='MARGIN: Use constant, un-trained beta.')
+            ### MarginLoss
+            parser.add_argument('--margin', default=0.1, type=float, help='TRIPLET/MARGIN: Margin for Triplet-based Losses')
+            parser.add_argument('--beta_lr', default=0.0005, type=float, help='MARGIN: Learning Rate for class margin parameters in MarginLoss')
+            parser.add_argument('--beta', default=1.2, type=float, help='MARGIN: Initial Class Margin Parameter in Margin Loss')
+            parser.add_argument('--nu', default=0, type=float, help='MARGIN: Regularisation value on betas in Margin Loss.')
+            parser.add_argument('--beta_constant', action='store_true', help='MARGIN: Use constant, un-trained beta.')
 
-                ### ProxyNCA
-                parser.add_argument('--proxy_lr', default=0.00001, type=float, help='PROXYNCA: Learning Rate for Proxies in ProxyNCALoss.')
-                ### NPair L2 Penalty
-                parser.add_argument('--l2npair', default=0.02, type=float, help='NPAIR: Penalty-value for non-normalized N-PAIR embeddings.')
+            ### ProxyNCA
+            parser.add_argument('--proxy_lr', default=0.00001, type=float, help='PROXYNCA: Learning Rate for Proxies in ProxyNCALoss.')
+            ### NPair L2 Penalty
+            parser.add_argument('--l2npair', default=0.02, type=float, help='NPAIR: Penalty-value for non-normalized N-PAIR embeddings.')
 
-                ### FastAP
-                parser.add_argument('--histbins', default=10, type=int, help='FASTAP: Number of histogram bins in distance quantization.')
-                parser.add_argument('--batches_per_super_pair', default=5, type=int, help='FASTAP: Number sampled batches per pair of super-labels.')
+            ### FastAP
+            parser.add_argument('--histbins', default=10, type=int, help='FASTAP: Number of histogram bins in distance quantization.')
+            parser.add_argument('--batches_per_super_pair', default=5, type=int, help='FASTAP: Number sampled batches per pair of super-labels.')
 
-                ### Precision
-                parser.add_argument('--pk', default=k, type=int, help='Cutoff value w.r.t. precision optimization.') #5, 10
+            ### Precision
+            parser.add_argument('--pk', default=k, type=int, help='Cutoff value w.r.t. precision optimization.') #5, 10
 
 
-                ##### Read in parameters
-                opt = parser.parse_args()
+            ##### Read in parameters
+            opt = parser.parse_args()
 
-                """============================================================================"""
-                #opt.source_path += '/' + opt.dataset
-                #opt.save_path += '/' + opt.dataset
+            """============================================================================"""
+            #opt.source_path += '/' + opt.dataset
+            #opt.save_path += '/' + opt.dataset
 
-                opt.source_path = os.path.join(root_dataset, opt.dataset)
-                opt.save_path = os.path.join(root_output, opt.dataset)
+            opt.source_path = os.path.join(root_dataset, opt.dataset)
+            opt.save_path = os.path.join(root_output, opt.dataset)
 
-                opt.gpu, opt.device = gpu_id, device
+            opt.gpu, opt.device = gpu_id, device
 
-                if opt.loss == 'listloss':
-                    debug = False
-                    pass
+            if opt.loss == 'listloss':
+                debug = False
+                pass
 
-                elif opt.loss == 'ppp':
-                    pass
+            elif opt.loss == 'ppp':
+                pass
 
-                else:
-                    run(opt=opt)
+            else:
+                run(opt=opt)
