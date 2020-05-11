@@ -29,6 +29,8 @@ from PIL import Image
 # FastAP loss proposed in CVPR'19 paper "Deep Metric Learning to Rank"
 from FastAP_loss import FastAPLoss
 
+from y.swap_precision import SwapPrecision, RankAwareSwapPrecision, RankAwareMargin, BetaMinusOriginSwapPrecision, BetaKMeanSepSwapPrecision, BetaMinusMeanSwapPrecision, SwapPrecisionPaper
+
 """================================================================================================="""
 ############ LOSS SELECTION FUNCTION #####################
 def loss_select(loss, opt, to_optim):
@@ -63,6 +65,56 @@ def loss_select(loss, opt, to_optim):
     elif loss=='fastap':
         loss_params  = {'num_bins':opt.histbins}
         criterion    = FastAPLoss(**loss_params)
+
+    elif loss == 'SwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity':True, 'opt':opt}
+        criterion = SwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'SwapPrecisionPaper':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity':True, 'opt':opt}
+        criterion = SwapPrecisionPaper(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'RankAwareSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = RankAwareSwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'RankAwareMargin':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = RankAwareMargin(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'BetaMinusOriginSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = BetaMinusOriginSwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'BetaKMeanSepSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = BetaKMeanSepSwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'BetaMinusMeanSwapPrecision':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': True, 'opt': opt}
+        criterion = BetaMinusMeanSwapPrecision(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
     else:
         raise Exception('Loss {} not available!'.format(loss))
 
@@ -150,19 +202,34 @@ class TupleSampler():
             #0 for current anchor
             pos[i] = False
 
-            #Find negatives that violate triplet constraint semi-negatives
-            neg_mask = np.logical_and(neg,d<d[np.where(pos)[0]].max())
+            # print('d',d)
+            # print('neg', neg)
+            if pos.sum() > 0:
+                # print('ddd', d[np.where(pos)[0]].max())
+                #Find negatives that violate triplet constraint semi-negatives
+                neg_mask = np.logical_and(neg,d<d[np.where(pos)[0]].max())
+            else:
+                neg_mask = np.array([False])
             #Find positives that violate triplet constraint semi-hardly
-            pos_mask = np.logical_and(pos,d>d[np.where(neg)[0]].min())
+            # print('pos', pos)
+            # print('ppp', d[np.where(neg)[0]])
+            if neg.sum() > 0:
+                pos_mask = np.logical_and(pos,d>d[np.where(neg)[0]].min())
+            else:
+                pos_mask = np.array([False])
+
+            # print('pos mask', pos_mask)
+            # print('neg mask', neg_mask)
 
             if pos_mask.sum()>0:
                 positives.append(np.random.choice(np.where(pos_mask)[0]))
-            else:
+            elif pos.sum() > 0:
                 positives.append(np.random.choice(np.where(pos)[0]))
+
 
             if neg_mask.sum()>0:
                 negatives.append(np.random.choice(np.where(neg_mask)[0]))
-            else:
+            elif neg.sum() > 0:
                 negatives.append(np.random.choice(np.where(neg)[0]))
 
         sampled_triplets = [[a, p, n] for a, p, n in zip(anchors, positives, negatives)]
@@ -318,7 +385,10 @@ class TripletLoss(torch.nn.Module):
         #Sample triplets to use for training.
         sampled_triplets = self.sampler.give(batch, labels)
         #Compute triplet loss
-        loss             = torch.stack([self.triplet_distance(batch[triplet[0],:],batch[triplet[1],:],batch[triplet[2],:]) for triplet in sampled_triplets])
+        try:
+            loss             = torch.stack([self.triplet_distance(batch[triplet[0],:],batch[triplet[1],:],batch[triplet[2],:]) for triplet in sampled_triplets])
+        except RuntimeError:
+            loss = torch.tensor(0., requires_grad=True).cuda()
 
         return torch.mean(loss)
 

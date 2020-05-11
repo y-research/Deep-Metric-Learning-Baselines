@@ -129,9 +129,9 @@ def f1_score(model_generated_cluster_labels, target_labels, feature_coll, comput
         index = item_map[labels_pred[i]]
         count_item[index] = count_item[index] + 1
 
-    #Compute True Positive (TP) plus False Positive (FP) count
     tp_fp = 0
     for k in range(n_labels):
+    #Compute True Positive (TP) plus False Positive (FP) count
         if count_cluster[k] > 1:
             tp_fp = tp_fp + comb(count_cluster[k], 2)
 
@@ -167,9 +167,6 @@ def f1_score(model_generated_cluster_labels, target_labels, feature_coll, comput
     F1 = (beta*beta + 1) * P * R / (beta*beta * P + R)
 
     return F1
-
-
-
 
 """============================================================================================================="""
 def eval_metrics_one_dataset(model, test_dataloader, device, k_vals, opt):
@@ -238,10 +235,19 @@ def eval_metrics_one_dataset(model, test_dataloader, device, k_vals, opt):
             recall_at_k = np.sum([1 for target, recalled_predictions in zip(target_labels, k_closest_classes) if target in recalled_predictions[:k]])/len(target_labels)
             recall_all_k.append(recall_at_k)
 
+        ### Compute Precision
+        precision_all_k = []
+        for k in k_vals:
+            precision_at_k = np.sum([1 for target, recalled_predictions in zip(target_labels, k_closest_classes)
+                                     for r_pred in recalled_predictions[:k] if r_pred == target]) / (k*len(target_labels))
+            precision_all_k.append(precision_at_k)
+
+
+
         ### Compute F1 Score
         F1 = f1_score(model_generated_cluster_labels, target_labels, feature_coll, computed_centroids)
 
-    return F1, NMI, recall_all_k, feature_coll
+    return F1, NMI, recall_all_k, precision_all_k, feature_coll
 
 
 
@@ -680,7 +686,7 @@ class LOGGER():
             v_metric_list    = [self.progress_saver['val'][key] for key in self.progress_saver['val'].keys() if key not in ['Time', 'Epochs']]
             v_legend_handles = [key for key in self.progress_saver['val'].keys() if key not in ['Time', 'Epochs']]
 
-            self.info_plot.make_plot(t_epochs, v_epochs, t_loss_list, v_metric_list, t_legend_handles, v_legend_handles)
+            # self.info_plot.make_plot(t_epochs, v_epochs, t_loss_list, v_metric_list, t_legend_handles, v_legend_handles)
         else:
             #Iterate over all test sets.
             for i in range(3):
@@ -714,7 +720,7 @@ def metrics_to_examine(dataset, k_vals):
     else:
         metric_dict['val'] = ['Epochs','Time','NMI', 'F1']
         metric_dict['val'] += ['Recall @ {}'.format(k) for k in k_vals]
-
+        metric_dict['val'] += ['Precision @ {}'.format(k) for k in k_vals]
     return metric_dict
 
 

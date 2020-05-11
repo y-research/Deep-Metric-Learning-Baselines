@@ -53,7 +53,7 @@ def evaluate(dataset, LOG, **kwargs):
     Returns:
         (optional) Computed metrics. Are normally written directly to LOG and printed.
     """
-    if dataset in ['cars196', 'cub200', 'online_products']:
+    if dataset in ['cars196', 'CUB_200_2011', 'online_products']:
         ret = evaluate_one_dataset(LOG, **kwargs)
     elif dataset in ['in-shop']:
         ret = evaluate_query_and_gallery_dataset(LOG, **kwargs)
@@ -276,10 +276,11 @@ def evaluate_one_dataset(LOG, dataloader, model, opt, save=True, give_return=Fal
 
     with torch.no_grad():
         #Compute Metrics
-        F1, NMI, recall_at_ks, feature_matrix_all = aux.eval_metrics_one_dataset(model, dataloader, device=opt.device, k_vals=opt.k_vals, opt=opt)
+        F1, NMI, recall_at_ks, precision_at_ks, feature_matrix_all = aux.eval_metrics_one_dataset(model, dataloader, device=opt.device, k_vals=opt.k_vals, opt=opt)
         #Make printable summary string.
         result_str = ', '.join('@{0}: {1:.4f}'.format(k,rec) for k,rec in zip(opt.k_vals, recall_at_ks))
-        result_str = 'Epoch (Test) {0}: NMI [{1:.4f}] | F1 [{2:.4f}] | Recall [{3}]'.format(epoch, NMI, F1, result_str)
+        result_str_prc = ', '.join('@{0}: {1:.4f}'.format(k,rec) for k,rec in zip(opt.k_vals, precision_at_ks))
+        result_str = 'Epoch (Test) {0}: NMI [{1:.4f}] | F1 [{2:.4f}] | Recall [{3}] | Precision [{4}]'.format(epoch, NMI, F1, result_str, result_str_prc)
 
         if LOG is not None:
             if save:
@@ -288,11 +289,11 @@ def evaluate_one_dataset(LOG, dataloader, model, opt, save=True, give_return=Fal
                     aux.set_checkpoint(model, opt, LOG.progress_saver, LOG.prop.save_path+'/checkpoint.pth.tar')
                     aux.recover_closest_one_dataset(feature_matrix_all, image_paths, LOG.prop.save_path+'/sample_recoveries.png')
             #Update logs.
-            LOG.log('val', LOG.metrics_to_log['val'], [epoch, np.round(time.time()-start), NMI, F1]+recall_at_ks)
+            LOG.log('val', LOG.metrics_to_log['val'], [epoch, np.round(time.time()-start), NMI, F1]+recall_at_ks+precision_at_ks)
 
     print(result_str)
     if give_return:
-        return recall_at_ks, NMI, F1
+        return precision_at_ks, recall_at_ks, NMI, F1
     else:
         None
 
