@@ -30,7 +30,7 @@ from PIL import Image
 from FastAP_loss import FastAPLoss
 
 from y.swap_precision import SwapPrecision, RankAwareSwapPrecision, RankAwareMargin, BetaMinusOriginSwapPrecision, BetaKMeanSepSwapPrecision, BetaMinusMeanSwapPrecision, SwapPrecisionPaper
-
+from y.l2r_lossfunctions import ListNet, Lambdarank, RankNet
 """================================================================================================="""
 ############ LOSS SELECTION FUNCTION #####################
 def loss_select(loss, opt, to_optim):
@@ -115,6 +115,26 @@ def loss_select(loss, opt, to_optim):
         # todo ? weight_decay
         to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
 
+    elif loss == 'ListNet':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': False, 'opt': opt}
+        criterion = ListNet(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'Lambdarank':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': False, 'opt': opt}
+        criterion = Lambdarank(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
+
+    elif loss == 'RankNet':
+        loss_params = {'anchor_id': opt.anchor_id, 'use_similarity': False, 'opt': opt}
+        criterion = RankNet(**loss_params)
+
+        # todo ? weight_decay
+        to_optim += [{'params': criterion.parameters(), 'lr': opt.lr, 'weight_decay': 0}]
     else:
         raise Exception('Loss {} not available!'.format(loss))
 

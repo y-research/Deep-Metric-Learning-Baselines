@@ -208,7 +208,8 @@ class ResNet50(nn.Module):
 
         mod_x = self.model.last_linear(x)
         #No Normalization is used if N-Pair Loss is the target criterion.
-        return mod_x if self.pars.loss=='npair' else torch.nn.functional.normalize(mod_x, dim=-1)
+        # return mod_x if self.pars.loss=='npair' else torch.nn.functional.normalize(mod_x, dim=-1)
+        return mod_x if self.pars.loss == 'Lambdarank' else torch.nn.functional.normalize(mod_x, dim=-1)
 
 
     def to_optim(self, opt):
